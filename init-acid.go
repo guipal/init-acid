@@ -29,7 +29,7 @@ import (
 
 func main() {
 
-	var instance,  k8scluster, k8snamespace, dockeruser, dockerpass, dockerepo, imageversion,configrepo,configbranch,path,host,gitProject  string
+	var instance,  k8scluster, k8snamespace, dockeruser, dockerpass,gituser,gitpass, dockerepo, imageversion,configrepo,configbranch,path,host,gitProject  string
 	var verbose,test bool
 	var port int
 	var kubeconfig *string
@@ -40,6 +40,8 @@ func main() {
 	flag.StringVar(&k8snamespace, "k8sNamespace", "acid-setup", "Changeset TAG")
 	flag.StringVar(&dockeruser, "dockerUser", "", "")
 	flag.StringVar(&dockerpass, "dockerPassword", "", "")
+	flag.StringVar(&gituser, "gitUser", "", "")
+	flag.StringVar(&gitpass, "gitPassword", "", "")
 	flag.StringVar(&dockerepo, "dockerRepo", "docker.io/acid3stripes", "Docker repo to download base image without / at the end")
 	flag.StringVar(&imageversion, "imageVersion", "latest", "")
 	flag.StringVar(&configrepo, "configRepo", "", "")
@@ -84,9 +86,10 @@ func main() {
 		copyHome(instance,dockerepo,verbose)
 		resumeDocker(instance,dockerepo,verbose)
 		downloadPluginList(strings.TrimSpace(password))
-		githubUtils.CreateRepo("guipal","e99e7dd5ce7d93e44c7702333fdea0c7c4749c80",configrepo,gitProject)
+		gituser,gitpass=credentials("Credentials for git account")
+		githubUtils.CreateRepo(gituser,gitpass,configrepo,gitProject)
 		config,privateKey,publicKey,knownHosts  := k8sUtils.GetSSHData(path,host,port,instance,"guipal","e99e7dd5ce7d93e44c7702333fdea0c7c4749c80")
-		githubUtils.CreateRepoKey("guipal","e99e7dd5ce7d93e44c7702333fdea0c7c4749c80",configrepo,gitProject,"ssh-key-"+instance,publicKey)
+		githubUtils.CreateRepoKey(gituser,gitpass,configrepo,gitProject,"ssh-key-"+instance,publicKey)
 		initRepository(host+":"+gitProject+"/"+configrepo,verbose)
 		dockeruser,dockerpass=credentials("Credentials for docker registry")
 		k8sclient:=k8sUtils.NewK8sClient(kubeconfig)
@@ -97,8 +100,8 @@ func main() {
 		k8sUtils.CreateIngress(k8sclient,instance,k8snamespace,k8scluster,dockerepo,imageversion,host+":"+gitProject+"/"+configrepo,configbranch)
 		k8sUtils.CreateSSHSecret(k8sclient,k8snamespace,dockerepo,dockeruser,dockerpass,instance,config,privateKey,publicKey,knownHosts)
 	}else{
-		config,privateKey,publicKey,knownHosts  := k8sUtils.GetSSHData(path,host,port,instance,"guipal","e99e7dd5ce7d93e44c7702333fdea0c7c4749c80")
-		githubUtils.CreateRepoKey("guipal","e99e7dd5ce7d93e44c7702333fdea0c7c4749c80",configrepo,gitProject,"ssh-key-"+instance,publicKey)
+		config,privateKey,publicKey,knownHosts  := k8sUtils.GetSSHData(path,host,port,instance,gituser,gitpass)
+		githubUtils.CreateRepoKey(gituser,gitpass,configrepo,gitProject,"ssh-key-"+instance,publicKey)
 		dockeruser,dockerpass=credentials("Credentials for docker registry")
 		k8sclient:=k8sUtils.NewK8sClient(kubeconfig)
 		k8sUtils.CreateK8sNamespace(k8sclient,k8snamespace)
